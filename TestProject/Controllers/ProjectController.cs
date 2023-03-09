@@ -127,17 +127,46 @@ namespace TestProject.Controllers
                  .Where(p => p.ProjectId == id)
                  .Single();
 
+            if (projectToUpdate == null)
+            {
+                return NotFound();
+            }
+
+            projectToUpdate.Title = project.Title;
+            projectToUpdate.Published = project.Published;
+
+            if (projectToUpdate.Competences == null)
+            {
+                return Problem("Entity set 'DataContext.Competences'  is null.");
+            }
+
+            foreach (var competence in projectToUpdate.Competences.ToList())
+            {
+                projectToUpdate.Competences.Remove(competence);
+            }
+
+
             if (ModelState.IsValid)
             {
                 try
                 {
-                    // Kod från tutorial
-                    UpdateProjectComptences(selectedCompetences, projectToUpdate);
-                    //_context.SaveChanges();
-
-                    // Scaffoldad kod
+                    if (selectedCompetences != null)
+                    {
+                        foreach (var competence in selectedCompetences)
+                        {
+                            var competenceToAdd = _context.Competences.Find(int.Parse(competence));
+  
+                            if (competenceToAdd == null)
+                            {
+                                return Problem("Entity set 'DataContext.Competences'  is null.");
+                            }
+                            projectToUpdate.Competences.Add(competenceToAdd);
+                        }
+                    }
+                    
                     _context.Update(projectToUpdate);
                     await _context.SaveChangesAsync();
+
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -213,37 +242,6 @@ namespace TestProject.Controllers
                 });
             }
             ViewBag.Competences = viewModel;
-        }
-
-        private void UpdateProjectComptences(string[] selectedCompetences, Project projectToUpdate)
-        {
-            if (selectedCompetences == null)
-            {
-                projectToUpdate.Competences = new List<Competence>();
-                return;
-            }
-
-            var selectedCompetencesHS = new HashSet<string>(selectedCompetences);
-            var projectCompetences = new HashSet<int>
-                (projectToUpdate.Competences.Select(c => c.CompetenceId));
-
-            foreach (var competence in projectToUpdate.Competences)
-            {
-                if (selectedCompetencesHS.Contains(competence.CompetenceId.ToString()))
-                {
-                    if (!projectCompetences.Contains(competence.CompetenceId))
-                    {
-                        projectToUpdate.Competences.Add(competence);
-                    }
-                }
-                else
-                {
-                    if (projectCompetences.Contains(competence.CompetenceId))
-                    {
-                        projectToUpdate.Competences.Remove(competence);
-                    }
-                }
-            }
         }
     }
 
